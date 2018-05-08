@@ -1,0 +1,10 @@
+﻿.resetPass, .switchMode, #rememberMeCheckContainer
+{
+    display: none;
+
+}
+
+div#accountPortalModalDialog .generalExceptionError
+{
+    margin-top: -25px !important;
+}

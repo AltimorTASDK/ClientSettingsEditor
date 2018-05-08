@@ -1,0 +1,214 @@
+﻿<Window x:Class="ClientSettings.MainWindowTest"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:ClientSettings"
+        mc:Ignorable="d"
+        Title="ClientSettings Editor" Height="500" Width="800">
+    <Grid>
+        <Border BorderBrush="Gray" BorderThickness="0 1 0 0">
+            <!-- Resources -->
+            <Border.Resources>
+                <Style x:Key="TextBoxStyle" TargetType="{x:Type TextBox}">
+                    <Setter Property="Padding" Value="3"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="VerticalContentAlignment" Value="Center"/>
+                    <Setter Property="IsReadOnly" Value="True"/>
+                    <Setter Property="IsHitTestVisible" Value="False"/>
+                </Style>
+                <Style x:Key="TextBoxBorderedStyle" TargetType="{x:Type TextBox}" BasedOn="{StaticResource TextBoxStyle}">
+                    <Setter Property="BorderThickness" Value="1 0 1 0"/>
+                    <Setter Property="BorderBrush" Value="Gray"/>
+                </Style>
+                <Style x:Key="TextBoxBoldStyle" TargetType="{x:Type TextBox}" BasedOn="{StaticResource TextBoxStyle}">
+                    <Setter Property="FontWeight" Value="Bold"/>
+                </Style>
+                <Style x:Key="TextBoxBoldBorderedStyle" TargetType="{x:Type TextBox}" BasedOn="{StaticResource TextBoxBorderedStyle}">
+                    <Setter Property="FontWeight" Value="Bold"/>
+                </Style>
+                <Style x:Key="TextBoxEditableStyle" TargetType="{x:Type TextBox}" BasedOn="{StaticResource TextBoxStyle}">
+                    <Setter Property="IsReadOnly" Value="{Binding NotEditable}"/>
+                    <Setter Property="IsHitTestVisible" Value="{Binding Editable}"/>
+                </Style>
+                <Style x:Key="TreeListView" TargetType="ContentControl">
+                    <Setter Property="Content" Value="{Binding}"/>
+                    <Style.Triggers>
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding HasChildren}" Value="True"/>
+                                <Condition Binding="{Binding HasNext}" Value="True"/>
+                            </MultiDataTrigger.Conditions>
+                            <Setter Property="ContentTemplate">
+                                <Setter.Value>
+                                    <DataTemplate>
+                                        <Grid SnapsToDevicePixels="True" HorizontalAlignment="Stretch">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition/>
+                                                <RowDefinition/>
+                                                <RowDefinition/>
+                                            </Grid.RowDefinitions>
+                                            <Grid Grid.Row="0" SnapsToDevicePixels="True" HorizontalAlignment="Stretch">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox Grid.Column="0" Text="{Binding Info.Name, Mode=OneWay}" Style="{StaticResource TextBoxStyle}"/>
+                                                <TextBox Grid.Column="1" Text="{Binding Info.Type, Mode=OneWay}" Style="{StaticResource TextBoxBorderedStyle}"/>
+                                                <TextBox Grid.Column="2" Text="{Binding Info.Value, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Style="{StaticResource TextBoxEditableStyle}"/>
+                                                <Path Margin="-1000 0 0 0" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="6" VerticalAlignment="Bottom" Stretch="Fill" StrokeThickness="1" StrokeStartLineCap="Square" StrokeEndLineCap="Square" Stroke="Gray" Data="M 0 0 H 1" />
+                                            </Grid>
+                                            <ContentControl Style="{DynamicResource TreeListView}" DataContext="{Binding Children}"/>
+                                            <ContentControl Grid.Row="2" Style="{DynamicResource TreeListView}" DataContext="{Binding Next}"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </MultiDataTrigger>
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding HasChildren}" Value="False"/>
+                                <Condition Binding="{Binding HasNext}" Value="True"/>
+                            </MultiDataTrigger.Conditions>
+                            <Setter Property="ContentTemplate">
+                                <Setter.Value>
+                                    <DataTemplate>
+                                        <Grid SnapsToDevicePixels="True" HorizontalAlignment="Stretch">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition/>
+                                                <RowDefinition/>
+                                            </Grid.RowDefinitions>
+                                            <Grid Grid.Row="0" SnapsToDevicePixels="True" HorizontalAlignment="Stretch">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox Grid.Column="0" Text="{Binding Info.Name, Mode=OneWay}" Style="{StaticResource TextBoxStyle}"/>
+                                                <TextBox Grid.Column="1" Text="{Binding Info.Type, Mode=OneWay}" Style="{StaticResource TextBoxBorderedStyle}"/>
+                                                <TextBox Grid.Column="2" Text="{Binding Info.Value, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Style="{StaticResource TextBoxEditableStyle}"/>
+                                                <Path Margin="-1000 0 0 0" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="6" VerticalAlignment="Bottom" Stretch="Fill" StrokeThickness="1" StrokeStartLineCap="Square" StrokeEndLineCap="Square" Stroke="Gray" Data="M 0 0 H 1" />
+                                            </Grid>
+                                            <ContentControl Grid.Row="1" Style="{DynamicResource TreeListView}" DataContext="{Binding Next}"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </MultiDataTrigger>
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding HasChildren}" Value="True"/>
+                                <Condition Binding="{Binding HasNext}" Value="False"/>
+                            </MultiDataTrigger.Conditions>
+                            <Setter Property="ContentTemplate">
+                                <Setter.Value>
+                                    <DataTemplate>
+                                        <Grid SnapsToDevicePixels="True" HorizontalAlignment="Stretch">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition/>
+                                                <RowDefinition/>
+                                            </Grid.RowDefinitions>
+                                            <Grid Grid.Row="0" SnapsToDevicePixels="True" HorizontalAlignment="Stretch">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox Grid.Column="0" Text="{Binding Info.Name, Mode=OneWay}" Style="{StaticResource TextBoxStyle}"/>
+                                                <TextBox Grid.Column="1" Text="{Binding Info.Type, Mode=OneWay}" Style="{StaticResource TextBoxBorderedStyle}"/>
+                                                <TextBox Grid.Column="2" Text="{Binding Info.Value, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Style="{StaticResource TextBoxEditableStyle}"/>
+                                                <Path Margin="-1000 0 0 0" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="6" VerticalAlignment="Bottom" Stretch="Fill" StrokeThickness="1" StrokeStartLineCap="Square" StrokeEndLineCap="Square" Stroke="Gray" Data="M 0 0 H 1" />
+                                            </Grid>
+                                            <ContentControl Grid.Row="1" Style="{DynamicResource TreeListView}" DataContext="{Binding Children}"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </MultiDataTrigger>
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding HasChildren}" Value="False"/>
+                                <Condition Binding="{Binding HasNext}" Value="False"/>
+                            </MultiDataTrigger.Conditions>
+                            <Setter Property="ContentTemplate">
+                                <Setter.Value>
+                                    <DataTemplate>
+                                        <Grid SnapsToDevicePixels="True" HorizontalAlignment="Stretch">
+                                            <Grid SnapsToDevicePixels="True" HorizontalAlignment="Stretch">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox Grid.Column="0" Text="{Binding Info.Name, Mode=OneWay}" Style="{StaticResource TextBoxStyle}"/>
+                                                <TextBox Grid.Column="1" Text="{Binding Info.Type, Mode=OneWay}" Style="{StaticResource TextBoxBorderedStyle}"/>
+                                                <TextBox Grid.Column="2" Text="{Binding Info.Value, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Style="{StaticResource TextBoxEditableStyle}"/>
+                                                <Path Margin="-1000 0 0 0" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="6" VerticalAlignment="Bottom" Stretch="Fill" StrokeThickness="1" StrokeStartLineCap="Square" StrokeEndLineCap="Square" Stroke="Gray" Data="M 0 0 H 1" />
+                                            </Grid>
+                                        </Grid>
+                                    </DataTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </MultiDataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Resources>
+
+            <!-- Content -->
+            <Grid Grid.IsSharedSizeScope="True">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+
+                <!-- Column headers -->
+                <TreeViewItem Grid.Row="0">
+                    <TreeViewItem.Header>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition SharedSizeGroup="Property"/>
+                                <!-- Placeholders for three columns of ToggleButton -->
+                                <ColumnDefinition SharedSizeGroup="Toggle"/>
+                                <ColumnDefinition SharedSizeGroup="Toggle"/>
+                                <ColumnDefinition SharedSizeGroup="Toggle"/>
+                                <ColumnDefinition SharedSizeGroup="Type"/>
+                                <ColumnDefinition SharedSizeGroup="Value"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" Text="Property" Style="{StaticResource TextBoxBoldStyle}"/>
+                            <!-- Empty TreeViewItem to measure the size of its ToggleButton into the "Toggle" group-->
+                            <TreeViewItem Grid.Column="1" Padding="0"/>
+                            <TextBox Grid.Column="4" Text="Type" Style="{StaticResource TextBoxBoldBorderedStyle}"/>
+                            <TextBox Grid.Column="5" Text="Value" Style="{StaticResource TextBoxBoldStyle}"/>
+                        </Grid>
+                    </TreeViewItem.Header>
+                </TreeViewItem>
+
+                <!-- Data rows -->
+                <!--<ContentControl Style="{StaticResource TreeListView}"/>-->
+
+                <ContentControl Content="{Binding}">
+                    <ContentControl.ContentTemplate>
+                        <DataTemplate>
+                            <TextBox Text="{Binding Info.Name, Mode=OneWay}" IsReadOnly="True"/>
+                            <!--<DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding HasNext}" Value="True">
+                                    <Setter Property="DataContext" Value="{Binding Next}"/>
+                                </DataTrigger>
+                            </DataTemplate.Triggers>-->
+                        </DataTemplate>
+                    </ContentControl.ContentTemplate>
+                    <ContentControl.Style>
+                        <Style>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasNext}" Value="True">
+                                    <Setter Property="ContentControl.DataContext" Value="{Binding Next}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ContentControl.Style>
+                </ContentControl>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
