@@ -19,6 +19,7 @@ using System.Windows.Shapes;
 using System.Windows.Threading;
 using System.IO;
 using RestSharp;
+using Newtonsoft.Json.Linq;
 
 namespace ClientSettings
 {
@@ -631,11 +632,23 @@ namespace ClientSettings
 		private string StoredToken = null;
 		private string StoredAccountId = null;
 
+		private bool VerifyToken()
+		{
+			var Request = new RestRequest("account/api/oauth/verify", Method.GET);
+			Request.AddHeader("Authorization", "bearer " + StoredToken);
+
+			var Client = new RestClient("https://account-public-service-prod03.ol.epicgames.com");
+			var Response = Client.Execute(Request);
+
+			var Obj = JObject.Parse(Response.Content);
+			return !Obj.ContainsKey("errorCode");
+		}
+
 		private void CloudImport_Click(object sender, RoutedEventArgs e)
 		{
 			string Token, AccountId;
 
-			if (StoredToken != null && StoredAccountId != null)
+			if (StoredToken != null && StoredAccountId != null && VerifyToken())
 			{
 				Token = StoredToken;
 				AccountId = StoredAccountId;
@@ -654,6 +667,8 @@ namespace ClientSettings
 					return;
 				}
 			}
+
+			VerifyToken();
 
 			string UniqueFilename = null;
 
@@ -683,7 +698,7 @@ namespace ClientSettings
 		{
 			string Token, AccountId;
 
-			if (StoredToken != null && StoredAccountId != null)
+			if (StoredToken != null && StoredAccountId != null && VerifyToken())
 			{
 				Token = StoredToken;
 				AccountId = StoredAccountId;
