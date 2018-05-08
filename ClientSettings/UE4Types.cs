@@ -281,7 +281,7 @@ namespace ClientSettings
 			if (!NewValue.StartsWith("(") || !NewValue.EndsWith(")"))
 				return;
 
-			var Split = NewValue.Split(',');
+			var Split = NewValue.Substring(1, NewValue.Length - 2).Split(',');
 			if (Split.Length != 2)
 				return;
 
