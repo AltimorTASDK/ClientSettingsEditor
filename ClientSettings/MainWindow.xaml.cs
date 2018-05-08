@@ -185,6 +185,11 @@ namespace ClientSettings
 			{
 				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(Name));
 			}
+
+			public void UpdateArrayCount()
+			{
+				OnPropertyChanged("Type");
+			}
 		}
 
 		public IList<PropertyInfo> PropertyList = new ObservableCollection<PropertyInfo>();
@@ -222,6 +227,8 @@ namespace ClientSettings
 					if (Info.Parent.Children[i].ArrayIndex != -1)
 						Info.Parent.Children[i].ArrayIndex++;
 				}
+
+				Info.Parent.UpdateArrayCount();
 			}
 			else
 			{
@@ -262,6 +269,8 @@ namespace ClientSettings
 					if (Info.Parent.Children[i].ArrayIndex != -1)
 						Info.Parent.Children[i].ArrayIndex--;
 				}
+
+				Info.Parent.UpdateArrayCount();
 			}
 			else
 			{
