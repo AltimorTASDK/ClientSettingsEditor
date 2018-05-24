@@ -479,7 +479,7 @@ namespace ClientSettings
 						try
 						{
 							Info.Prop.Serialize(TempWriter);
-							TempStream.CopyTo(Writer.BaseStream);
+							Writer.Write(TempStream.ToArray());
 						}
 						catch (UESerializationException)
 						{
