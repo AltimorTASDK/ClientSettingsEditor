@@ -37,6 +37,13 @@ namespace ClientSettings
 		}
 	}
 
+	public class UESerializationException : IOException
+	{
+		public UESerializationException(string Message) : base(Message)
+		{
+		}
+	}
+
 	public struct FGuid
 	{
 		public UInt32 A, B, C, D;
@@ -175,7 +182,7 @@ namespace ClientSettings
 
 		public override UProperty Clone()
 		{
-			return new UNameProperty { Value = Value };
+			return new UNameProperty { Value = string.Copy(Value) };
 		}
 
 		public override void Deserialize(BinaryReader Reader)
@@ -209,7 +216,7 @@ namespace ClientSettings
 
 		public override UProperty Clone()
 		{
-			return new UTextProperty { Flags = Flags, HistoryType = HistoryType, Namespace = Namespace, Key = Key, SourceString = SourceString };
+			return new UTextProperty { Flags = Flags, HistoryType = HistoryType, Namespace = string.Copy(Namespace), Key = string.Copy(Key), SourceString = string.Copy(SourceString) };
 		}
 
 		public override void Deserialize(BinaryReader Reader)
@@ -218,7 +225,7 @@ namespace ClientSettings
 			HistoryType = Reader.ReadByte();
 
 			if (HistoryType != 0)
-				throw new Exception("Unsupported HistoryType");
+				throw new UESerializationException("Unsupported HistoryType");
 
 			Namespace = Reader.ReadFString();
 			Key = Reader.ReadFString();
@@ -231,7 +238,7 @@ namespace ClientSettings
 			Writer.Write(HistoryType);
 
 			if (HistoryType != 0)
-				throw new Exception("Unsupported HistoryType");
+				throw new UESerializationException("Unsupported HistoryType");
 
 			Writer.WriteFString(Namespace);
 			Writer.WriteFString(Key);

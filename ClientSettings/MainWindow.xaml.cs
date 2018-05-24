@@ -52,25 +52,34 @@ namespace ClientSettings
 			public enum KeyValueType { None, Key, Value }
 			public KeyValueType KVType = KeyValueType.None;
 
-			// Only used for unsupported types
-			public byte[] UnsupportedData = null;
+			public byte[] RawData = null;
+
+			// For unsupported types or properties that failed to deserialize
+			public string FailureReason;
 
 			public PropertyInfo Clone()
 			{
-				var NewChildren = new ObservableCollection<PropertyInfo>();
-				foreach (var Child in Children)
-					NewChildren.Add(Child.Clone());
-
-				return new PropertyInfo
+				var Result = new PropertyInfo
 				{
 						Tag = Tag?.Clone(),
 						Prop = Prop?.Clone(),
 						KVType = KVType,
 						Parent = Parent,
 						ArrayIndex = ArrayIndex,
-						UnsupportedData = UnsupportedData,
-						Children = NewChildren
+						RawData = RawData
 				};
+
+				var NewChildren = new ObservableCollection<PropertyInfo>();
+				foreach (var Child in Children)
+				{
+					var NewChild = Child.Clone();
+					NewChild.Parent = Result;
+					NewChildren.Add(NewChild);
+				}
+
+				Result.Children = NewChildren;
+
+				return Result;
 			}
 
 			public string Name
@@ -132,7 +141,7 @@ namespace ClientSettings
 						if (Tag.Type == "BoolProperty")
 							return Tag.BoolVal != 0 ? "True" : "False";
 						else
-							return "";
+							return FailureReason;
 					}
 					else
 					{
@@ -370,20 +379,29 @@ namespace ClientSettings
 			{
 				if (!PropertyConstructors.ContainsKey(Info.Tag.Type))
 				{
-					// Unsupported type
-					Info.UnsupportedData = Reader.ReadBytes(Info.Tag.Size);
+					Info.RawData = Reader.ReadBytes(Info.Tag.Size);
+					Info.FailureReason = "Unsupported type";
 					return Info;
 				}
 
 				Info.Prop = PropertyConstructors[Info.Tag.Type]();
 			}
 
-			var Data = Reader.ReadBytes(Info.Tag.Size);
-			using (var DataStream = new MemoryStream(Data))
+			Info.RawData = Reader.ReadBytes(Info.Tag.Size);
+			using (var DataStream = new MemoryStream(Info.RawData))
 			{
 				using (var DataReader = new BinaryReader(DataStream))
 				{
-					Info.Prop.Deserialize(DataReader);
+					try
+					{
+						Info.Prop.Deserialize(DataReader);
+					}
+					catch (Exception e)
+					{
+						// Treat it the same as an unsupported property type
+						Info.FailureReason = e.Message;
+						Info.Prop = null;
+					}
 				}
 			}
 
@@ -449,12 +467,27 @@ namespace ClientSettings
 			}
 			else if (Info.Prop == null)
 			{
-				if (Info.UnsupportedData != null)
-					Writer.Write(Info.UnsupportedData);
+				Writer.Write(Info.RawData);
 			}
 			else
 			{
-				Info.Prop.Serialize(Writer);
+				// Read into a temporary stream in a case an exception occurs
+				using (var TempStream = new MemoryStream())
+				{
+					using (var TempWriter = new BinaryWriter(TempStream))
+					{
+						try
+						{
+							Info.Prop.Serialize(TempWriter);
+							TempStream.CopyTo(Writer.BaseStream);
+						}
+						catch (UESerializationException)
+						{
+							// Write the original bytes instead
+							Writer.Write(Info.RawData);
+						}
+					}
+				}
 			}
 
 			// Correctly set the size in the tag since it could change
@@ -521,10 +554,10 @@ namespace ClientSettings
 
 					return true;
 				}
-				catch
+				catch (Exception e)
 				{
 					Application.Current.Dispatcher.BeginInvoke((Action)(PropertyList.Clear));
-					Application.Current.Dispatcher.Invoke(() => MessageBox.Show("Failed to deserialize file.", "Error", MessageBoxButton.OK, MessageBoxImage.Error));
+					Application.Current.Dispatcher.Invoke(() => MessageBox.Show("Failed to deserialize file. Exception: " + e.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error));
 					return false;
 				}
 			}
@@ -548,9 +581,9 @@ namespace ClientSettings
 
 					return true;
 				}
-				catch
+				catch (Exception e)
 				{
-					Application.Current.Dispatcher.Invoke(() => MessageBox.Show("Failed to serialize file.", "Error", MessageBoxButton.OK, MessageBoxImage.Error));
+					Application.Current.Dispatcher.Invoke(() => MessageBox.Show("Failed to serialize file. Exception: " + e.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error));
 					return false;
 				}
 			}
