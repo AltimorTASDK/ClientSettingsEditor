@@ -77,8 +77,9 @@
                     <RowDefinition/>
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
-                    <!-- Placeholders for three columns of ToggleButton -->
+                    <!-- Placeholders for four columns of ToggleButton -->
                     <ColumnDefinition Width="Auto" x:Name="ToggleColumn"/>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="300" x:Name="PropertyColumn"/>
@@ -90,11 +91,13 @@
                 <TreeViewItem Grid.Column="0" Padding="0"/>
                 <TreeViewItem Grid.Column="1" Padding="0"/>
                 <TreeViewItem Grid.Column="2" Padding="0"/>
+                <TreeViewItem Grid.Column="3" Padding="0"/>
 
-                <Grid Grid.ColumnSpan="6">
+                <Grid Grid.ColumnSpan="7">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="0"/>
-                        <!-- Placeholders for four columns of ToggleButton -->
+                        <!-- Placeholders for five columns of ToggleButton -->
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
@@ -103,7 +106,7 @@
                         <ColumnDefinition Width="{Binding Width, ElementName=TypeColumn, Mode=TwoWay}" MinWidth="100" x:Name="TypeSplitColumn"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <DataGridColumnHeader Grid.Column="0" Grid.ColumnSpan="6" IsHitTestVisible="False">
+                    <DataGridColumnHeader Grid.Column="0" Grid.ColumnSpan="7" IsHitTestVisible="False">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
@@ -117,14 +120,15 @@
                     <TreeViewItem Grid.Column="2" Padding="0"/>
                     <TreeViewItem Grid.Column="3" Padding="0"/>
                     <TreeViewItem Grid.Column="4" Padding="0"/>
-                    <GridSplitter Grid.Column="5" DragCompleted="GridSplitter_DragCompleted" Width="10" Margin="0 0 -5 0" Background="Transparent" VerticalAlignment="Stretch" HorizontalAlignment="Right"/>
-                    <DataGridColumnHeader Grid.Column="6" Content="Type" IsHitTestVisible="False"/>
-                    <GridSplitter Grid.Column="6" DragCompleted="GridSplitter_DragCompleted" Width="10" Margin="0 0 -5 0" Background="Transparent"  VerticalAlignment="Stretch" HorizontalAlignment="Right"/>
-                    <DataGridColumnHeader Grid.Column="7" Content="Value" IsHitTestVisible="False"/>
+                    <TreeViewItem Grid.Column="5" Padding="0"/>
+                    <GridSplitter Grid.Column="6" DragCompleted="GridSplitter_DragCompleted" Width="10" Margin="0 0 -5 0" Background="Transparent" VerticalAlignment="Stretch" HorizontalAlignment="Right"/>
+                    <DataGridColumnHeader Grid.Column="7" Content="Type" IsHitTestVisible="False"/>
+                    <GridSplitter Grid.Column="7" DragCompleted="GridSplitter_DragCompleted" Width="10" Margin="0 0 -5 0" Background="Transparent"  VerticalAlignment="Stretch" HorizontalAlignment="Right"/>
+                    <DataGridColumnHeader Grid.Column="8" Content="Value" IsHitTestVisible="False"/>
                 </Grid>
 
                 <!-- Data rows -->
-                <TreeView Grid.Row="1" Grid.ColumnSpan="6" ItemsSource="{Binding PropertyList}" BorderBrush="{x:Static SystemColors.ControlDarkBrush}"
+                <TreeView Grid.Row="1" Grid.ColumnSpan="7" ItemsSource="{Binding PropertyList}" BorderBrush="{x:Static SystemColors.ControlDarkBrush}"
                           BorderThickness="0 1 0 0" Padding="0" HorizontalContentAlignment="Stretch" Background="{x:Static SystemColors.MenuBrush}"
                           ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                     <TreeView.Resources>
@@ -233,7 +237,7 @@
                         </Style>
                     </TreeView.ItemContainerStyle>
                     <TreeView.ItemTemplate>
-                        <!-- Level 0 template leaves space for 3 child "Toggle" levels -->
+                        <!-- Level 0 template leaves space for 4 child "Toggle" levels -->
                         <HierarchicalDataTemplate ItemsSource="{Binding Children}">
                             <Grid SnapsToDevicePixels="True">
                                 <Grid.ColumnDefinitions>
@@ -241,17 +245,18 @@
                                     <ColumnDefinition Width="{Binding ActualWidth, ElementName=ToggleColumn, Mode=OneWay}"/>
                                     <ColumnDefinition Width="{Binding ActualWidth, ElementName=ToggleColumn, Mode=OneWay}"/>
                                     <ColumnDefinition Width="{Binding ActualWidth, ElementName=ToggleColumn, Mode=OneWay}"/>
+                                    <ColumnDefinition Width="{Binding ActualWidth, ElementName=ToggleColumn, Mode=OneWay}"/>
                                     <ColumnDefinition Width="{Binding Width, ElementName=TypeColumn, Mode=OneWay}"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBox Grid.Column="0" Grid.ColumnSpan="4"  Text="{Binding Name, Mode=TwoWay}" Style="{StaticResource TextBoxNameStyle}"/>
-                                <TextBox Grid.Column="4" Text="{Binding Type, Mode=OneWay}" Style="{StaticResource TextBoxStyle}"/>
-                                <TextBox Grid.Column="5" Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Style="{StaticResource TextBoxValueStyle}"/>
-                                <Rectangle SnapsToDevicePixels="True" Grid.Column="4" Stroke="{x:Static SystemColors.ControlDarkBrush}" StrokeThickness="1" Margin="0 -1 0 0"/>
-                                <Path SnapsToDevicePixels="True" Margin="-1000 0 0 0" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="6" VerticalAlignment="Bottom" Stretch="Fill" StrokeThickness="1" StrokeStartLineCap="Square" StrokeEndLineCap="Square" Stroke="{x:Static SystemColors.ControlDarkBrush}" Data="M 0 0 H 1" />
+                                <TextBox Grid.Column="0" Grid.ColumnSpan="5"  Text="{Binding Name, Mode=TwoWay}" Style="{StaticResource TextBoxNameStyle}"/>
+                                <TextBox Grid.Column="5" Text="{Binding Type, Mode=OneWay}" Style="{StaticResource TextBoxStyle}"/>
+                                <TextBox Grid.Column="6" Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Style="{StaticResource TextBoxValueStyle}"/>
+                                <Rectangle SnapsToDevicePixels="True" Grid.Column="5" Stroke="{x:Static SystemColors.ControlDarkBrush}" StrokeThickness="1" Margin="0 -1 0 0"/>
+                                <Path SnapsToDevicePixels="True" Margin="-1000 0 0 0" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="7" VerticalAlignment="Bottom" Stretch="Fill" StrokeThickness="1" StrokeStartLineCap="Square" StrokeEndLineCap="Square" Stroke="{x:Static SystemColors.ControlDarkBrush}" Data="M 0 0 H 1" />
                             </Grid>
 
-                            <!-- Level 1 template leaves space for 2 child "Toggle" levels -->
+                            <!-- Level 1 template leaves space for 3 child "Toggle" levels -->
                             <HierarchicalDataTemplate.ItemTemplate>
                                 <HierarchicalDataTemplate ItemsSource="{Binding Children}">
                                     <Grid SnapsToDevicePixels="True">
@@ -259,48 +264,69 @@
                                             <ColumnDefinition Width="{Binding Width, ElementName=PropertyColumn, Mode=OneWay}"/>
                                             <ColumnDefinition Width="{Binding ActualWidth, ElementName=ToggleColumn, Mode=OneWay}"/>
                                             <ColumnDefinition Width="{Binding ActualWidth, ElementName=ToggleColumn, Mode=OneWay}"/>
+                                            <ColumnDefinition Width="{Binding ActualWidth, ElementName=ToggleColumn, Mode=OneWay}"/>
                                             <ColumnDefinition Width="{Binding Width, ElementName=TypeColumn, Mode=OneWay}"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBox Grid.Column="0" Grid.ColumnSpan="3"  Text="{Binding Name, Mode=TwoWay}" Style="{StaticResource TextBoxNameStyle}"/>
-                                        <TextBox Grid.Column="3" Text="{Binding Type, Mode=OneWay}" Style="{StaticResource TextBoxStyle}"/>
-                                        <TextBox Grid.Column="4" Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Style="{StaticResource TextBoxValueStyle}"/>
-                                        <Rectangle SnapsToDevicePixels="True" Grid.Column="3" Stroke="{x:Static SystemColors.ControlDarkBrush}" StrokeThickness="1" Margin="0 -1 0 0"/>
-                                        <Path SnapsToDevicePixels="True" Margin="-1000 0 0 0" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="5" VerticalAlignment="Bottom" Stretch="Fill" StrokeThickness="1" StrokeStartLineCap="Square" StrokeEndLineCap="Square" Stroke="{x:Static SystemColors.ControlDarkBrush}" Data="M 0 0 H 1" />
+                                        <TextBox Grid.Column="0" Grid.ColumnSpan="4"  Text="{Binding Name, Mode=TwoWay}" Style="{StaticResource TextBoxNameStyle}"/>
+                                        <TextBox Grid.Column="4" Text="{Binding Type, Mode=OneWay}" Style="{StaticResource TextBoxStyle}"/>
+                                        <TextBox Grid.Column="5" Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Style="{StaticResource TextBoxValueStyle}"/>
+                                        <Rectangle SnapsToDevicePixels="True" Grid.Column="4" Stroke="{x:Static SystemColors.ControlDarkBrush}" StrokeThickness="1" Margin="0 -1 0 0"/>
+                                        <Path SnapsToDevicePixels="True" Margin="-1000 0 0 0" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="6" VerticalAlignment="Bottom" Stretch="Fill" StrokeThickness="1" StrokeStartLineCap="Square" StrokeEndLineCap="Square" Stroke="{x:Static SystemColors.ControlDarkBrush}" Data="M 0 0 H 1" />
                                     </Grid>
 
-                                    <!-- Level 2 template leaves space for 1 child "Toggle" level -->
+                                    <!-- Level 2 template leaves space for 2 child "Toggle" levels -->
                                     <HierarchicalDataTemplate.ItemTemplate>
                                         <HierarchicalDataTemplate ItemsSource="{Binding Children}">
                                             <Grid SnapsToDevicePixels="True">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="{Binding Width, ElementName=PropertyColumn, Mode=OneWay}"/>
                                                     <ColumnDefinition Width="{Binding ActualWidth, ElementName=ToggleColumn, Mode=OneWay}"/>
+                                                    <ColumnDefinition Width="{Binding ActualWidth, ElementName=ToggleColumn, Mode=OneWay}"/>
                                                     <ColumnDefinition Width="{Binding Width, ElementName=TypeColumn, Mode=OneWay}"/>
                                                     <ColumnDefinition Width="*"/>
                                                 </Grid.ColumnDefinitions>
-                                                <TextBox Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding Name, Mode=TwoWay}" Style="{StaticResource TextBoxNameStyle}"/>
-                                                <TextBox Grid.Column="2" Text="{Binding Type, Mode=OneWay}" Style="{StaticResource TextBoxStyle}"/>
-                                                <TextBox Grid.Column="3" Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Style="{StaticResource TextBoxValueStyle}"/>
-                                                <Rectangle SnapsToDevicePixels="True" Grid.Column="2" Stroke="{x:Static SystemColors.ControlDarkBrush}" StrokeThickness="1" Margin="0 -1 0 0"/>
-                                                <Path SnapsToDevicePixels="True" Margin="-1000 0 0 0" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" VerticalAlignment="Bottom" Stretch="Fill" StrokeThickness="1" StrokeStartLineCap="Square" StrokeEndLineCap="Square" Stroke="{x:Static SystemColors.ControlDarkBrush}" Data="M 0 0 H 1" />
+                                                <TextBox Grid.Column="0" Grid.ColumnSpan="3" Text="{Binding Name, Mode=TwoWay}" Style="{StaticResource TextBoxNameStyle}"/>
+                                                <TextBox Grid.Column="3" Text="{Binding Type, Mode=OneWay}" Style="{StaticResource TextBoxStyle}"/>
+                                                <TextBox Grid.Column="4" Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Style="{StaticResource TextBoxValueStyle}"/>
+                                                <Rectangle SnapsToDevicePixels="True" Grid.Column="3" Stroke="{x:Static SystemColors.ControlDarkBrush}" StrokeThickness="1" Margin="0 -1 0 0"/>
+                                                <Path SnapsToDevicePixels="True" Margin="-1000 0 0 0" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="5" VerticalAlignment="Bottom" Stretch="Fill" StrokeThickness="1" StrokeStartLineCap="Square" StrokeEndLineCap="Square" Stroke="{x:Static SystemColors.ControlDarkBrush}" Data="M 0 0 H 1" />
                                             </Grid>
 
-                                            <!-- Level 3 template has no children -->
+                                            <!-- Level 3 template leaves space for 1 child "Toggle" level -->
                                             <HierarchicalDataTemplate.ItemTemplate>
                                                 <HierarchicalDataTemplate ItemsSource="{Binding Children}">
                                                     <Grid SnapsToDevicePixels="True">
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="{Binding Width, ElementName=PropertyColumn, Mode=OneWay}"/>
+                                                            <ColumnDefinition Width="{Binding ActualWidth, ElementName=ToggleColumn, Mode=OneWay}"/>
                                                             <ColumnDefinition Width="{Binding Width, ElementName=TypeColumn, Mode=OneWay}"/>
                                                             <ColumnDefinition Width="*"/>
                                                         </Grid.ColumnDefinitions>
-                                                        <TextBox Grid.Column="0" Text="{Binding Name, Mode=TwoWay}" Style="{StaticResource TextBoxNameStyle}"/>
-                                                        <TextBox Grid.Column="1" Text="{Binding Type, Mode=OneWay}" Style="{StaticResource TextBoxStyle}"/>
-                                                        <TextBox Grid.Column="2" Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Style="{StaticResource TextBoxValueStyle}"/>
-                                                        <Rectangle SnapsToDevicePixels="True" Grid.Column="1" Stroke="{x:Static SystemColors.ControlDarkBrush}" StrokeThickness="1" Margin="0 -1 0 0"/>
-                                                        <Path SnapsToDevicePixels="True" Margin="-1000 0 0 0" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" VerticalAlignment="Bottom" Stretch="Fill" StrokeThickness="1" StrokeStartLineCap="Square" StrokeEndLineCap="Square" Stroke="{x:Static SystemColors.ControlDarkBrush}" Data="M 0 0 H 1" />
+                                                        <TextBox Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding Name, Mode=TwoWay}" Style="{StaticResource TextBoxNameStyle}"/>
+                                                        <TextBox Grid.Column="2" Text="{Binding Type, Mode=OneWay}" Style="{StaticResource TextBoxStyle}"/>
+                                                        <TextBox Grid.Column="3" Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Style="{StaticResource TextBoxValueStyle}"/>
+                                                        <Rectangle SnapsToDevicePixels="True" Grid.Column="2" Stroke="{x:Static SystemColors.ControlDarkBrush}" StrokeThickness="1" Margin="0 -1 0 0"/>
+                                                        <Path SnapsToDevicePixels="True" Margin="-1000 0 0 0" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" VerticalAlignment="Bottom" Stretch="Fill" StrokeThickness="1" StrokeStartLineCap="Square" StrokeEndLineCap="Square" Stroke="{x:Static SystemColors.ControlDarkBrush}" Data="M 0 0 H 1" />
                                                     </Grid>
+
+                                                    <!-- Level 4 template has no children -->
+                                                    <HierarchicalDataTemplate.ItemTemplate>
+                                                        <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                                            <Grid SnapsToDevicePixels="True">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="{Binding Width, ElementName=PropertyColumn, Mode=OneWay}"/>
+                                                                    <ColumnDefinition Width="{Binding Width, ElementName=TypeColumn, Mode=OneWay}"/>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                <TextBox Grid.Column="0" Text="{Binding Name, Mode=TwoWay}" Style="{StaticResource TextBoxNameStyle}"/>
+                                                                <TextBox Grid.Column="1" Text="{Binding Type, Mode=OneWay}" Style="{StaticResource TextBoxStyle}"/>
+                                                                <TextBox Grid.Column="2" Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Style="{StaticResource TextBoxValueStyle}"/>
+                                                                <Rectangle SnapsToDevicePixels="True" Grid.Column="1" Stroke="{x:Static SystemColors.ControlDarkBrush}" StrokeThickness="1" Margin="0 -1 0 0"/>
+                                                                <Path SnapsToDevicePixels="True" Margin="-1000 0 0 0" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" VerticalAlignment="Bottom" Stretch="Fill" StrokeThickness="1" StrokeStartLineCap="Square" StrokeEndLineCap="Square" Stroke="{x:Static SystemColors.ControlDarkBrush}" Data="M 0 0 H 1" />
+                                                            </Grid>
+                                                        </HierarchicalDataTemplate>
+                                                    </HierarchicalDataTemplate.ItemTemplate>
                                                 </HierarchicalDataTemplate>
                                             </HierarchicalDataTemplate.ItemTemplate>
                                         </HierarchicalDataTemplate>

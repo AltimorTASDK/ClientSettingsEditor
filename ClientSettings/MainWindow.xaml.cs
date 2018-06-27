@@ -55,7 +55,7 @@ namespace ClientSettings
 			public byte[] RawData = null;
 
 			// For unsupported types or properties that failed to deserialize
-			public string FailureReason;
+			public string FailureReason = null;
 
 			public PropertyInfo Clone()
 			{
@@ -136,12 +136,13 @@ namespace ClientSettings
 			{
 				get
 				{
-					if (Prop == null)
+					if (FailureReason != null)
 					{
-						if (Tag.Type == "BoolProperty")
-							return Tag.BoolVal != 0 ? "True" : "False";
-						else
-							return FailureReason;
+						return FailureReason;
+					}
+					else if (Tag.Type == "BoolProperty")
+					{
+						return Tag.BoolVal != 0 ? "True" : "False";
 					}
 					else
 					{
@@ -313,14 +314,16 @@ namespace ClientSettings
 			if (Info.Tag.Name == "None")
 				return null;
 
-			// Special handling for tagless bools in MapProperty
-			if (Info.Tag.Type == "BoolProperty" && Tag != null)
+			if (Info.Tag.Type == "BoolProperty")
 			{
-				Info.Tag.BoolVal = Reader.ReadByte();
+				// Special handling for tagless bools in MapProperty
+				if (Tag != null)
+				{
+					Info.Tag.BoolVal = Reader.ReadByte();
+				}
 				return Info;
 			}
-
-			if (Info.Tag.Type == "StructProperty")
+			else if (Info.Tag.Type == "StructProperty")
 			{
 				if (Info.Tag.StructName == null || !HardcodedStructs.ContainsKey(Info.Tag.StructName))
 				{
@@ -339,6 +342,7 @@ namespace ClientSettings
 			else if (Info.Tag.Type == "MapProperty")
 			{
 				var MapProp = new UMapProperty();
+				var StartOffset = Reader.BaseStream.Position;
 				MapProp.Deserialize(Reader);
 				Info.Prop = MapProp;
 
@@ -355,6 +359,17 @@ namespace ClientSettings
 					Value.KVType = PropertyInfo.KeyValueType.Value;
 					Value.Parent = Info;
 					Info.Children.Add(Value);
+
+					if (Key.FailureReason != null || Value.FailureReason != null)
+					{
+						// It's impossible to skip a MapProperty child that can't be deserialized because the size is unknown
+						Reader.BaseStream.Seek(StartOffset, SeekOrigin.Begin);
+						Info.RawData = Reader.ReadBytes(Info.Tag.Size);
+						Info.FailureReason = "Failed to deserialize child: " + (Key.FailureReason ?? Value.FailureReason);
+						Info.Children.Clear();
+						return Info;
+					}
+
 				}
 
 				return Info;
@@ -387,6 +402,23 @@ namespace ClientSettings
 				Info.Prop = PropertyConstructors[Info.Tag.Type]();
 			}
 
+			// UMapProperty does not provide a full tag for the inner types, so the size is unknown
+			if (Tag != null && Tag.Size == 0)
+			{
+				try
+				{
+					Info.Prop.Deserialize(Reader);
+				}
+				catch (Exception e)
+				{
+					// Treat it the same as an unsupported property type
+					Info.FailureReason = e.Message;
+					Info.Prop = null;
+				}
+
+				return Info;
+			}
+
 			Info.RawData = Reader.ReadBytes(Info.Tag.Size);
 			using (var DataStream = new MemoryStream(Info.RawData))
 			{
@@ -416,10 +448,12 @@ namespace ClientSettings
 			if (Info.Tag.Name == "None")
 				return;
 
-			// Special handling for tagless bools in MapProperty
-			if (Info.Tag.Type == "BoolProperty" && NoTag)
+			if (Info.Tag.Type == "BoolProperty")
 			{
-				Writer.Write(Info.Tag.BoolVal);
+				// Special handling for tagless bools in MapProperty
+				if (NoTag)
+					Writer.Write(Info.Tag.BoolVal);
+
 				return;
 			}
 

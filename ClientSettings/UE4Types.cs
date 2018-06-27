@@ -65,47 +65,47 @@ namespace ClientSettings
 		}
 	}
 
-	public abstract class UProperty
+	public interface UProperty
 	{
-		public abstract UProperty Clone();
-		public abstract void Deserialize(BinaryReader Reader);
-		public abstract void Serialize(BinaryWriter Writer);
-		public abstract string DisplayValue();
-		public abstract void Modify(string NewValue);
-		public abstract bool Editable { get; }
+		UProperty Clone();
+		void Deserialize(BinaryReader Reader);
+		void Serialize(BinaryWriter Writer);
+		string DisplayValue();
+		void Modify(string NewValue);
+		bool Editable { get; }
 	}
 
 	public class UFloatProperty : UProperty
 	{
 		private float Value;
 
-		public override UProperty Clone()
+		public UProperty Clone()
 		{
 			return new UFloatProperty { Value = Value };
 		}
 
-		public override void Deserialize(BinaryReader Reader)
+		public void Deserialize(BinaryReader Reader)
 		{
 			Value = Reader.ReadSingle();
 		}
 
-		public override void Serialize(BinaryWriter Writer)
+		public void Serialize(BinaryWriter Writer)
 		{
 			Writer.Write(Value);
 		}
 
-		public override string DisplayValue()
+		public string DisplayValue()
 		{
-			return Value.ToString();
+			return Value.ToString(CultureInfo.InvariantCulture);
 		}
 
-		public override void Modify(string NewValue)
+		public void Modify(string NewValue)
 		{
-			if (float.TryParse(NewValue, out var FloatVal))
+			if (float.TryParse(NewValue, NumberStyles.Number, CultureInfo.InvariantCulture, out var FloatVal))
 				Value = FloatVal;
 		}
 
-		public override bool Editable { get { return true; } }
+		public bool Editable { get { return true; } }
 	}
 
 	public class UArrayProperty : UProperty
@@ -113,33 +113,33 @@ namespace ClientSettings
 		public int Length;
 		public FPropertyTag InnerTag { get; private set; } = new FPropertyTag();
 
-		public override UProperty Clone()
+		public UProperty Clone()
 		{
 			return new UArrayProperty { Length = Length, InnerTag = InnerTag.Clone() };
 		}
 
-		public override void Deserialize(BinaryReader Reader)
+		public void Deserialize(BinaryReader Reader)
 		{
 			Length = Reader.ReadInt32();
 			InnerTag.Deserialize(Reader);
 		}
 
-		public override void Serialize(BinaryWriter Writer)
+		public void Serialize(BinaryWriter Writer)
 		{
 			Writer.Write(Length);
 			InnerTag.Serialize(Writer);
 		}
 
-		public override string DisplayValue()
+		public string DisplayValue()
 		{
 			return "";
 		}
 
-		public override void Modify(string NewValue)
+		public void Modify(string NewValue)
 		{
 		}
 
-		public override bool Editable { get { return false; } }
+		public bool Editable { get { return false; } }
 	}
 
 	public class UMapProperty : UProperty
@@ -147,65 +147,65 @@ namespace ClientSettings
 		public int NumKeysToRemove;
 		public int NumEntries;
 
-		public override UProperty Clone()
+		public UProperty Clone()
 		{
 			return new UMapProperty { NumKeysToRemove = NumKeysToRemove, NumEntries = NumEntries };
 		}
 
-		public override void Deserialize(BinaryReader Reader)
+		public void Deserialize(BinaryReader Reader)
 		{
 			NumKeysToRemove = Reader.ReadInt32();
 			NumEntries = Reader.ReadInt32();
 		}
 
-		public override void Serialize(BinaryWriter Writer)
+		public void Serialize(BinaryWriter Writer)
 		{
 			Writer.Write(NumKeysToRemove);
 			Writer.Write(NumEntries);
 		}
 
-		public override string DisplayValue()
+		public string DisplayValue()
 		{
 			return "";
 		}
 
-		public override void Modify(string NewValue)
+		public void Modify(string NewValue)
 		{
 		}
 
-		public override bool Editable { get { return false; } }
+		public bool Editable { get { return false; } }
 	}
 
 	public class UNameProperty : UProperty
 	{
 		private string Value;
 
-		public override UProperty Clone()
+		public UProperty Clone()
 		{
 			return new UNameProperty { Value = string.Copy(Value) };
 		}
 
-		public override void Deserialize(BinaryReader Reader)
+		public void Deserialize(BinaryReader Reader)
 		{
 			Value = Reader.ReadFString();
 		}
 
-		public override void Serialize(BinaryWriter Writer)
+		public void Serialize(BinaryWriter Writer)
 		{
 			Writer.WriteFString(Value);
 		}
 
-		public override string DisplayValue()
+		public string DisplayValue()
 		{
 			return Value;
 		}
 
-		public override void Modify(string NewValue)
+		public void Modify(string NewValue)
 		{
 			Value = NewValue;
 		}
 
-		public override bool Editable { get { return true; } }
+		public bool Editable { get { return true; } }
 	}
 
 	public class UTextProperty : UProperty
@@ -214,12 +214,12 @@ namespace ClientSettings
 		private byte HistoryType;
 		private string Namespace, Key, SourceString;
 
-		public override UProperty Clone()
+		public UProperty Clone()
 		{
 			return new UTextProperty { Flags = Flags, HistoryType = HistoryType, Namespace = string.Copy(Namespace), Key = string.Copy(Key), SourceString = string.Copy(SourceString) };
 		}
 
-		public override void Deserialize(BinaryReader Reader)
+		public void Deserialize(BinaryReader Reader)
 		{
 			Flags = Reader.ReadInt32();
 			HistoryType = Reader.ReadByte();
@@ -232,7 +232,7 @@ namespace ClientSettings
 			SourceString = Reader.ReadFString();
 		}
 
-		public override void Serialize(BinaryWriter Writer)
+		public void Serialize(BinaryWriter Writer)
 		{
 			Writer.Write(Flags);
 			Writer.Write(HistoryType);
@@ -245,45 +245,45 @@ namespace ClientSettings
 			Writer.WriteFString(SourceString);
 		}
 
-		public override string DisplayValue()
+		public string DisplayValue()
 		{
 			return SourceString;
 		}
 
-		public override void Modify(string NewValue)
+		public void Modify(string NewValue)
 		{
 		}
 
-		public override bool Editable { get { return false; } }
+		public bool Editable { get { return false; } }
 	}
 
 	public class FVector2D : UProperty
 	{
 		private float X, Y;
 
-		public override UProperty Clone()
+		public UProperty Clone()
 		{
 			return new FVector2D { X = X, Y = Y };
 		}
 
-		public override void Deserialize(BinaryReader Reader)
+		public void Deserialize(BinaryReader Reader)
 		{
 			X = Reader.ReadSingle();
 			Y = Reader.ReadSingle();
 		}
 
-		public override void Serialize(BinaryWriter Writer)
+		public void Serialize(BinaryWriter Writer)
 		{
 			Writer.Write(X);
 			Writer.Write(Y);
 		}
 
-		public override string DisplayValue()
+		public string DisplayValue()
 		{
-			return "(" + X.ToString() + ", " + Y.ToString() + ")";
+			return "(" + X.ToString(CultureInfo.InvariantCulture) + ", " + Y.ToString(CultureInfo.InvariantCulture) + ")";
 		}
 
-		public override void Modify(string NewValue)
+		public void Modify(string NewValue)
 		{
 			if (!NewValue.StartsWith("(") || !NewValue.EndsWith(")"))
 				return;
@@ -292,14 +292,17 @@ namespace ClientSettings
 			if (Split.Length != 2)
 				return;
 
-			if (!float.TryParse(Split[0], out var NewX) || !float.TryParse(Split[1], out var NewY))
+			if (!float.TryParse(Split[0], NumberStyles.Number, CultureInfo.InvariantCulture, out var NewX) ||
+				!float.TryParse(Split[1], NumberStyles.Number, CultureInfo.InvariantCulture, out var NewY))
+			{
 				return;
+			}
 
 			X = NewX;
 			Y = NewY;
 		}
 
-		public override bool Editable { get { return true; } }
+		public bool Editable { get { return true; } }
 	}
 
 	public class FPropertyTag
