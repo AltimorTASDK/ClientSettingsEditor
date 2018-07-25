@@ -30,10 +30,19 @@ namespace ClientSettings
 
 		public static void WriteFString(this BinaryWriter Writer, string value)
 		{
-			var Data = Encoding.ASCII.GetBytes(value);
-			Writer.Write(Data.Length + 1);
-			Writer.Write(Data);
-			Writer.Write((byte)(0)); // Null terminator
+			if (value == null)
+			{
+				// 0 length FStrings are actually legal and appear by default
+				// in SelectedRegionId since Fortnite v5.10
+				Writer.Write(0);
+			}
+			else
+			{
+				var Data = Encoding.ASCII.GetBytes(value);
+				Writer.Write(Data.Length + 1);
+				Writer.Write(Data);
+				Writer.Write((byte)(0)); // Null terminator
+			}
 		}
 	}
 
