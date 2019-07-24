@@ -109,26 +109,7 @@ namespace ClientSettings
 			{
 				get
 				{
-					if (Tag.Type == "StructProperty")
-						return "struct " + Tag.StructName;
-					if (Tag.Type == "EnumProperty")
-						return "enum " + Tag.EnumName;
-					if (Tag.Type == "ArrayProperty")
-						return (Children.Count > 0 ? Children[0].Type : Tag.InnerType) + "["  + Children.Count + "]";
-					if (Tag.Type == "FloatProperty")
-						return "float";
-					if (Tag.Type == "BoolProperty")
-						return "bool";
-					if (Tag.Type == "StrProperty")
-						return "string";
-					if (Tag.Type == "NameProperty")
-						return "FName";
-					if (Tag.Type == "TextProperty")
-						return "FText";
-					if (Tag.Type == "MapProperty")
-						return "map<" + Tag.InnerType + ", " + Tag.ValueType + ">";
-
-					return Tag.Type;
+					return TypeToCPP(Tag.Type);
 				}
 			}
 
@@ -144,6 +125,20 @@ namespace ClientSettings
 					{
 						return Tag.BoolVal != 0 ? "True" : "False";
 					}
+                    else if (Tag.Type == "StructProperty" && Tag.StructName == "FortActionKeyMapping")
+                    {
+                        // Show input names without expanding.
+                        return Children.Where(x => x.Name == "ActionName").FirstOrDefault()?.Value;
+                    }
+                    else if (Tag.Type == "StructProperty")
+                    {
+                        // Show HUD visibility names without expanding.
+                        return Children.Where(x => x.Name == "TagName").FirstOrDefault()?.Value;
+                    }
+                    else if (Prop == null)
+                    {
+                        return null;
+                    }
 					else
 					{
 						return Prop.DisplayValue();
@@ -171,6 +166,12 @@ namespace ClientSettings
 					else
 					{
 						Prop.Modify(value);
+
+                        if (Name == "ActionName" || Name == "TagName")
+                        {
+                            // Update input/HUD visibility mapping name previews.
+                            Parent?.OnPropertyChanged("Value");
+                        }
 					}
 				}
 			}
@@ -189,6 +190,34 @@ namespace ClientSettings
 				{
 					return ArrayIndex == -1;
 				}
+			}
+
+			private string TypeToCPP(string TypeName)
+			{
+                if (TypeName == "StructProperty" && Tag.StructName == null)
+                    return "struct";
+                if (TypeName == "StructProperty")
+                    return "struct " + Tag.StructName;
+                if (TypeName == "EnumProperty" && Tag.EnumName == null)
+                    return "enum";
+                if (TypeName == "EnumProperty")
+                    return "enum " + Tag.EnumName;
+                if (TypeName == "ArrayProperty")
+                    return (Children.Count > 0 ? Children[0].Type : TypeToCPP(Tag.InnerType)) + "["  + Children.Count + "]";
+                if (TypeName == "FloatProperty")
+                    return "float";
+                if (TypeName == "BoolProperty")
+                    return "bool";
+                if (TypeName == "StrProperty")
+                    return "string";
+                if (TypeName == "NameProperty")
+                    return "FName";
+                if (TypeName == "TextProperty")
+                    return "FText";
+                if (TypeName == "MapProperty")
+                    return "map<" + TypeToCPP(Tag.InnerType) + ", " + TypeToCPP(Tag.ValueType) + ">";
+
+                return TypeName;
 			}
 
 			private void OnPropertyChanged(string Name)
@@ -299,7 +328,8 @@ namespace ClientSettings
 
 		IDictionary<string, Func<UProperty>> HardcodedStructs = new Dictionary<string, Func<UProperty>>()
 		{
-			{ "Vector2D", () => new FVector2D() }
+			{ "Vector2D", () => new FVector2D() },
+			{ "DateTime", () => new FDateTime() }
 		};
 
 		private PropertyInfo ReadProperty(BinaryReader Reader, FPropertyTag Tag = null)
@@ -575,8 +605,8 @@ namespace ClientSettings
 		{
 			using (var Reader = new BinaryReader(Settings))
 			{
-				try
-				{
+				/*try
+				{*/
 					Header.Unknown1 = Reader.ReadBytes(0x12);
 					Header.Version = Reader.ReadFString();
 					Header.Unknown2 = Reader.ReadInt32();
@@ -587,13 +617,13 @@ namespace ClientSettings
 						Application.Current.Dispatcher.BeginInvoke((Action<PropertyInfo>)(PropertyList.Add), PropInfo);
 
 					return true;
-				}
+				/*}
 				catch (Exception e)
 				{
 					Application.Current.Dispatcher.BeginInvoke((Action)(PropertyList.Clear));
 					Application.Current.Dispatcher.Invoke(() => MessageBox.Show("Failed to deserialize file. Exception: " + e.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error));
 					return false;
-				}
+				}*/
 			}
 		}
 

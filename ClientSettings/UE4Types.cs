@@ -110,8 +110,8 @@ namespace ClientSettings
 
 		public void Modify(string NewValue)
 		{
-			if (float.TryParse(NewValue, NumberStyles.Number, CultureInfo.InvariantCulture, out var FloatVal))
-				Value = FloatVal;
+			if (float.TryParse(NewValue, NumberStyles.Number, CultureInfo.InvariantCulture, out var Result))
+				Value = Result;
 		}
 
 		public bool Editable { get { return true; } }
@@ -219,8 +219,14 @@ namespace ClientSettings
 
 	public class UTextProperty : UProperty
 	{
+        private enum ETextHistoryType
+        {
+            None = 0xFF,
+            Base = 0
+        }
+
 		private Int32 Flags;
-		private byte HistoryType;
+		private ETextHistoryType HistoryType;
 		private string Namespace, Key, SourceString;
 
 		public UProperty Clone()
@@ -231,9 +237,11 @@ namespace ClientSettings
 		public void Deserialize(BinaryReader Reader)
 		{
 			Flags = Reader.ReadInt32();
-			HistoryType = Reader.ReadByte();
+			HistoryType = (ETextHistoryType)(Reader.ReadByte());
 
-			if (HistoryType != 0)
+            if (HistoryType == ETextHistoryType.None)
+                return;
+			else if (HistoryType != ETextHistoryType.Base)
 				throw new UESerializationException("Unsupported HistoryType");
 
 			Namespace = Reader.ReadFString();
@@ -244,7 +252,7 @@ namespace ClientSettings
 		public void Serialize(BinaryWriter Writer)
 		{
 			Writer.Write(Flags);
-			Writer.Write(HistoryType);
+			Writer.Write((byte)(HistoryType));
 
 			if (HistoryType != 0)
 				throw new UESerializationException("Unsupported HistoryType");
@@ -309,6 +317,38 @@ namespace ClientSettings
 
 			X = NewX;
 			Y = NewY;
+		}
+
+		public bool Editable { get { return true; } }
+	}
+	public class FDateTime : UProperty
+	{
+        private DateTime Value;
+
+		public UProperty Clone()
+		{
+            return new FDateTime { Value = Value };
+		}
+
+		public void Deserialize(BinaryReader Reader)
+		{
+            Value = new DateTime(Reader.ReadInt64());
+		}
+
+		public void Serialize(BinaryWriter Writer)
+		{
+            Writer.Write(Value.Ticks);
+		}
+
+		public string DisplayValue()
+		{
+            return Value.ToString();
+		}
+
+		public void Modify(string NewValue)
+		{
+			if (DateTime.TryParse(NewValue, out var Result))
+				Value = Result;
 		}
 
 		public bool Editable { get { return true; } }
