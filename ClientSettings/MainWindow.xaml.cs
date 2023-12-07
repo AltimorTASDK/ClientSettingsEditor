@@ -1,27 +1,14 @@
 ﻿using System;
-using System.Reflection;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Text;
-using System.Net;
 using System.ComponentModel;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using System.Windows.Threading;
 using System.IO;
 using RestSharp;
 using Newtonsoft.Json.Linq;
 using Ionic.Zlib;
-using RestSharp.Extensions;
 
 namespace ClientSettings
 {
@@ -137,7 +124,7 @@ namespace ClientSettings
                         // Show input names without expanding.
                         return Children.Where(x => x.Name == "KeyName").FirstOrDefault()?.Value;
                     }
-                    else if (Tag.Type == "StructProperty")
+                    else if (Tag.Type == "StructProperty" && Prop == null)
                     {
                         // Show HUD visibility names without expanding.
                         return Children.Where(x => x.Name == "TagName").FirstOrDefault()?.Value;
@@ -203,6 +190,10 @@ namespace ClientSettings
 			{
                 if (TypeName == "StructProperty" && Tag.StructName == null)
                     return "struct";
+                if (TypeName == "StructProperty" && Tag.StructName == "Vector2D")
+                    return "FVector2D";
+                if (TypeName == "StructProperty" && Tag.StructName == "Guid")
+                    return "FGuid";
                 if (TypeName == "StructProperty")
                     return "struct " + Tag.StructName;
                 if (TypeName == "EnumProperty" && Tag.EnumName == null)
