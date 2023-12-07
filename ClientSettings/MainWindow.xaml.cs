@@ -683,7 +683,11 @@ namespace ClientSettings
 					}
 
 					// Enhanced input stuff
-					Footer = Settings.ReadAsBytes();
+					using (var FooterStream = new MemoryStream())
+					{
+						Settings.CopyTo(FooterStream);
+						Footer = FooterStream.ToArray();
+					}
 
                     return true;
                 }
@@ -835,7 +839,7 @@ namespace ClientSettings
 
 		private bool VerifyToken()
 		{
-			var Request = new RestRequest("account/api/oauth/verify", Method.GET);
+			var Request = new RestRequest("account/api/oauth/verify", Method.Get);
 			Request.AddHeader("Authorization", "bearer " + StoredToken);
 
 			var Client = new RestClient("https://account-public-service-prod03.ol.epicgames.com");
@@ -845,7 +849,7 @@ namespace ClientSettings
 			return !Obj.ContainsKey("errorCode");
 		}
 
-		private void CloudImport_Click(object sender, RoutedEventArgs e)
+		private async void CloudImport_Click(object sender, RoutedEventArgs e)
 		{
 			string Token, AccountId;
 
@@ -881,21 +885,20 @@ namespace ClientSettings
 			if (UniqueFilename == null)
 				return;
 
-			var Request = new RestRequest("fortnite/api/cloudstorage/user/" + AccountId + "/" + UniqueFilename, Method.GET);
+			var Request = new RestRequest("fortnite/api/cloudstorage/user/" + AccountId + "/" + UniqueFilename, Method.Get);
 			Request.AddHeader("Authorization", "bearer " + Token);
 
 			var Client = new RestClient("https://fortnite-public-service-prod11.ol.epicgames.com");
-			Client.ExecuteAsync(Request, Response =>
-			{
-				using (var Stream = new MemoryStream(Response.RawBytes))
-				{
-					if (OpenFromStream(Stream))
-						Application.Current.Dispatcher.Invoke(() => MVM.CanSaveFile = true);
-				}
-			});
+			var Response = await Client.ExecuteAsync(Request);
+
+            using (var Stream = new MemoryStream(Response.RawBytes))
+            {
+                if (OpenFromStream(Stream))
+                    Application.Current.Dispatcher.Invoke(() => MVM.CanSaveFile = true);
+            }
 		}
 
-		private void CloudExport_Click(object sender, RoutedEventArgs e)
+		private async void CloudExport_Click(object sender, RoutedEventArgs e)
 		{
 			string Token, AccountId;
 
@@ -933,16 +936,15 @@ namespace ClientSettings
 			{
 				if (SaveToStream(Stream))
 				{
-					var Request = new RestRequest("fortnite/api/cloudstorage/user/" + AccountId + "/" + UniqueFilename, Method.PUT);
+					var Request = new RestRequest("fortnite/api/cloudstorage/user/" + AccountId + "/" + UniqueFilename, Method.Put);
 					Request.AddHeader("Authorization", "bearer " + Token);
 					Request.AddHeader("Content-Type", "application/octet-stream");
 					Request.AddParameter("application/octet-stream", Stream.ToArray(), ParameterType.RequestBody);
 
 					var Client = new RestClient("https://fortnite-public-service-prod11.ol.epicgames.com");
-					Client.ExecuteAsync(Request, Response =>
-					{
-						Application.Current.Dispatcher.Invoke(() => MessageBox.Show(Response.StatusCode.ToString(), "Status", MessageBoxButton.OK, MessageBoxImage.Information));
-					});
+					var Response = await Client.ExecuteAsync(Request);
+                    Application.Current.Dispatcher.Invoke(() => MessageBox.Show(
+						Response.StatusCode.ToString(), "Status", MessageBoxButton.OK, MessageBoxImage.Information));
 				}
 			}
 		}

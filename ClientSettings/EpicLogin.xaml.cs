@@ -52,9 +52,9 @@ namespace ClientSettings
 					LoginWindow = PassedWindow;
 				}
 				
-				public void requestexchangecodesignin(string code, bool unknown)
+				public async void requestexchangecodesignin(string code, bool unknown)
 				{
-					var Request = new RestRequest("account/api/oauth/token", Method.POST);
+					var Request = new RestRequest("account/api/oauth/token", Method.Post);
 					Request.AddHeader("Authorization", "basic ZWM2ODRiOGM2ODdmNDc5ZmFkZWEzY2IyYWQ4M2Y1YzY6ZTFmMzFjMjExZjI4NDEzMTg2MjYyZDM3YTEzZmM4NGQ=");
 					Request.AddParameter("grant_type", "exchange_code");
 					Request.AddParameter("exchange_code", code);
@@ -62,14 +62,12 @@ namespace ClientSettings
 					Request.AddParameter("token_type", "eg1");
 
 					var Client = new RestClient("https://account-public-service-prod03.ol.epicgames.com");
-					Client.ExecuteAsync(Request, Response =>
-					{
-						var Obj = JObject.Parse(Response.Content);
-						LoginWindow.Token = (string)Obj["access_token"];
-						LoginWindow.AccountId = (string)Obj["account_id"];
-						Application.Current.Dispatcher.Invoke(() => LoginWindow.DialogResult = true);
-						Application.Current.Dispatcher.BeginInvoke((Action)LoginWindow.Close);
-					});
+					var Response = await Client.ExecuteAsync(Request);
+				    var Obj = JObject.Parse(Response.Content);
+				    LoginWindow.Token = (string)Obj["access_token"];
+				    LoginWindow.AccountId = (string)Obj["account_id"];
+				    Application.Current.Dispatcher.Invoke(() => LoginWindow.DialogResult = true);
+				    Application.Current.Dispatcher.Invoke(LoginWindow.Close);
 				}
 
 				public void requestforgotpassword()
@@ -119,7 +117,7 @@ namespace ClientSettings
 
 		private class ResourceSchemeHandler : ResourceHandler
 		{
-			public override bool ProcessRequestAsync(IRequest request, ICallback callback)
+			public override CefReturnValue ProcessRequestAsync(IRequest request, ICallback callback)
 			{
 				Task.Run(() =>
 				{
@@ -141,7 +139,7 @@ namespace ClientSettings
 					}
 				});
 
-				return true;
+				return CefReturnValue.ContinueAsync;
 			}
 		}
 
@@ -155,7 +153,7 @@ namespace ClientSettings
 
 		private class RenderProcessMessageHandler : IRenderProcessMessageHandler
 		{
-			public void OnContextCreated(IWebBrowser browserControl, IBrowser browser, IFrame frame)
+			public void OnContextCreated(IWebBrowser chromiumWebBrowser, IBrowser browser, IFrame frame)
 			{
 				if (!frame.IsMain || browser.IsPopup)
 					return;
@@ -169,11 +167,15 @@ namespace ClientSettings
                 });");
 			}
 
-			public void OnContextReleased(IWebBrowser browserControl, IBrowser browser, IFrame frame)
+			public void OnContextReleased(IWebBrowser chromiumWebBrowser, IBrowser browser, IFrame frame)
 			{
 			}
 
-			public void OnFocusedNodeChanged(IWebBrowser browserControl, IBrowser browser, IFrame frame, IDomNode node)
+			public void OnFocusedNodeChanged(IWebBrowser chromiumWebBrowser, IBrowser browser, IFrame frame, IDomNode node)
+			{
+			}
+
+            public void OnUncaughtException(IWebBrowser chromiumWebBrowser, IBrowser browser, IFrame frame, JavascriptException exception)
 			{
 			}
 		}
@@ -222,7 +224,7 @@ namespace ClientSettings
 
 			Browser.BrowserSettings = new BrowserSettings { BackgroundColor = 0xFF121212 };
 			Browser.MenuHandler = new MenuHandler();
-			Browser.JavascriptObjectRepository.Register("ue", new UeCallbacks(this));
+			Browser.JavascriptObjectRepository.Register("ue", new UeCallbacks(this), false);
 			Browser.RenderProcessMessageHandler = new RenderProcessMessageHandler();
 #if DEBUG
 			Browser.IsBrowserInitializedChanged += (o, e) => Browser.ShowDevTools();

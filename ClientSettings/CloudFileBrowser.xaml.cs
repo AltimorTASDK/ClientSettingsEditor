@@ -53,20 +53,21 @@ namespace ClientSettings
 		public CloudFileBrowser(string Token, string AccountId)
 		{
 			InitializeComponent();
-
 			DataContext = CloudFiles;
+			SendCloudRequest(Token, AccountId);
+		}
 
-			var Request = new RestRequest("fortnite/api/cloudstorage/user/" + AccountId, Method.GET);
+		private async void SendCloudRequest(string Token, string AccountId)
+		{
+			var Request = new RestRequest("fortnite/api/cloudstorage/user/" + AccountId, Method.Get);
 			Request.AddHeader("Authorization", "bearer " + Token);
 
 			var Client = new RestClient("https://fortnite-public-service-prod11.ol.epicgames.com");
-			Client.ExecuteAsync(Request, Response =>
-			{
-				var Array = JArray.Parse(Response.Content);
-				foreach (var Obj in Array.Root.Children())
-					Application.Current.Dispatcher.BeginInvoke((Action<JToken>)(CloudFiles.Add), Obj);
+			var Response = await Client.ExecuteAsync(Request);
 
-			});
+            var Array = JArray.Parse(Response.Content);
+            foreach (var Obj in Array.Root.Children())
+                Application.Current.Dispatcher.Invoke((Action<JToken>)(CloudFiles.Add), Obj);
 		}
 
 		private void DataGridRow_MouseDoubleClick(object sender, MouseButtonEventArgs e)
