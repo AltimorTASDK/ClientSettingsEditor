@@ -19,9 +19,9 @@ namespace ClientSettings
 		public string Token;
 		public string AccountId;
 
-		private class UeCallbacks
+		private class UECallbacks
 		{
-			public UeCallbacks(EpicLogin PassedWindow)
+			public UECallbacks(EpicLogin PassedWindow)
 			{
 				signinprompt = new SignInPrompt(PassedWindow);
 			}
@@ -211,12 +211,17 @@ namespace ClientSettings
 
 			InitializeComponent();
 
-			Browser.BrowserSettings = new BrowserSettings { BackgroundColor = 0xFF121212 };
+			Browser.BrowserSettings = new BrowserSettings { BackgroundColor = 0xFFFFFFFF };
 			Browser.MenuHandler = new MenuHandler();
-			Browser.JavascriptObjectRepository.Register("ue", new UeCallbacks(this), false);
+			Browser.JavascriptObjectRepository.Register("ue", new UECallbacks(this), false);
 			Browser.RenderProcessMessageHandler = new RenderProcessMessageHandler();
+
 #if DEBUG
-			Browser.IsBrowserInitializedChanged += (o, e) => Browser.ShowDevTools();
+			Browser.IsBrowserInitializedChanged += (o, e) =>
+			{
+				if (Browser.IsBrowserInitialized)
+					Browser.ShowDevTools();
+			};
 #endif
 		}
 
