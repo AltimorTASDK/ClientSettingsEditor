@@ -18,6 +18,7 @@ using CefSharp;
 using CefSharp.Wpf;
 using RestSharp;
 using Newtonsoft.Json.Linq;
+using RestSharp.Extensions;
 
 namespace ClientSettings
 {
@@ -33,8 +34,14 @@ namespace ClientSettings
 		{
 			public UeCallbacks(EpicLogin PassedWindow)
 			{
-				Prompt = new SignInPrompt(PassedWindow);
+				signinprompt = new SignInPrompt(PassedWindow);
 			}
+
+			public class Launcher
+			{
+			}
+
+			public Launcher launcher { get; } = new Launcher();
 
 			public class SignInPrompt
 			{
@@ -45,12 +52,8 @@ namespace ClientSettings
 					LoginWindow = PassedWindow;
 				}
 				
-				private IJavascriptCallback LoggingInCallback;
-
 				public void requestexchangecodesignin(string code, bool unknown)
 				{
-					LoggingInCallback.ExecuteAsync(true);
-
 					var Request = new RestRequest("account/api/oauth/token", Method.POST);
 					Request.AddHeader("Authorization", "basic ZWM2ODRiOGM2ODdmNDc5ZmFkZWEzY2IyYWQ4M2Y1YzY6ZTFmMzFjMjExZjI4NDEzMTg2MjYyZDM3YTEzZmM4NGQ=");
 					Request.AddParameter("grant_type", "exchange_code");
@@ -62,10 +65,10 @@ namespace ClientSettings
 					Client.ExecuteAsync(Request, Response =>
 					{
 						var Obj = JObject.Parse(Response.Content);
-						LoginWindow.Token = (string)(Obj["access_token"]);
-						LoginWindow.AccountId = (string)(Obj["account_id"]);
+						LoginWindow.Token = (string)Obj["access_token"];
+						LoginWindow.AccountId = (string)Obj["account_id"];
 						Application.Current.Dispatcher.Invoke(() => LoginWindow.DialogResult = true);
-						Application.Current.Dispatcher.BeginInvoke((Action)(LoginWindow.Close));
+						Application.Current.Dispatcher.BeginInvoke((Action)LoginWindow.Close);
 					});
 				}
 
@@ -84,22 +87,15 @@ namespace ClientSettings
 				public void onsigninerror(string error)
 				{
 				}
-
-				public void setloggingincallback(IJavascriptCallback callback)
-				{
-					LoggingInCallback = callback;
-				}
 			}
 
-			SignInPrompt Prompt;
-			public SignInPrompt signinprompt { get { return Prompt; } }
+			public SignInPrompt signinprompt { get; private set; }
 
 			public class Environment
 			{
 			}
 
-			Environment Env = new Environment();
-			public Environment environment { get { return Env; } }
+			public Environment environment { get; } = new Environment();
 
 			public class Common
 			{
@@ -118,8 +114,7 @@ namespace ClientSettings
 				}
 			}
 
-			Common Cmn = new Common();
-			public Common common { get { return Cmn; } }
+			public Common common { get; } = new Common();
 		}
 
 		private class ResourceSchemeHandler : ResourceHandler
@@ -134,7 +129,7 @@ namespace ClientSettings
 					{
 						var resource = Application.GetResourceStream(new Uri(uri.AbsolutePath, UriKind.Relative));
 						MimeType = resource.ContentType;
-						StatusCode = (int)(HttpStatusCode.OK);
+						StatusCode = (int)HttpStatusCode.OK;
 						Stream = resource.Stream;
 						ResponseLength = Stream.Length;
 
@@ -162,13 +157,16 @@ namespace ClientSettings
 		{
 			public void OnContextCreated(IWebBrowser browserControl, IBrowser browser, IFrame frame)
 			{
-				frame.ExecuteJavaScriptAsync(@"
-				document.addEventListener('DOMContentLoaded', function (event) {
-					var script = document.createElement('script');
-					script.type = 'text/javascript';
-					script.src = 'res://localhost/web/login.js';
-					document.body.appendChild(script);
-				});");
+				if (!frame.IsMain || browser.IsPopup)
+					return;
+
+                frame.ExecuteJavaScriptAsync(@"
+                document.addEventListener('DOMContentLoaded', () => {
+                    let script = document.createElement('script');
+                    script.type = 'text/javascript';
+                    script.src = 'res://localhost/web/login.js';
+                    document.head.appendChild(script);
+                });");
 			}
 
 			public void OnContextReleased(IWebBrowser browserControl, IBrowser browser, IFrame frame)
@@ -204,12 +202,17 @@ namespace ClientSettings
 
 		public EpicLogin()
 		{
-			var settings = new CefSettings();
+			var settings = new CefSettings
+			{
+				UserAgent = "EpicGamesLauncher"
+			};
+
 			settings.RegisterScheme(new CefCustomScheme
 			{
 				SchemeName = "res",
 				SchemeHandlerFactory = new ResourceSchemeHandlerFactory(),
-				IsSecure = true
+				IsSecure = true,
+				IsCSPBypassing = true
 			});
 
 			if (!Cef.IsInitialized)
@@ -217,20 +220,18 @@ namespace ClientSettings
 
 			InitializeComponent();
 
+			Browser.BrowserSettings = new BrowserSettings { BackgroundColor = 0xFF121212 };
 			Browser.MenuHandler = new MenuHandler();
 			Browser.JavascriptObjectRepository.Register("ue", new UeCallbacks(this));
 			Browser.RenderProcessMessageHandler = new RenderProcessMessageHandler();
+#if DEBUG
+			Browser.IsBrowserInitializedChanged += (o, e) => Browser.ShowDevTools();
+#endif
 		}
 
-		private void Button_Click(object sender, RoutedEventArgs e)
+		private void CloseButton_Click(object sender, RoutedEventArgs e)
 		{
 			Close();
-		}
-
-		private void DragBar_MouseDown(object sender, MouseButtonEventArgs e)
-		{
-			if (e.ChangedButton == MouseButton.Left)
-				DragMove();
 		}
 	}
 }

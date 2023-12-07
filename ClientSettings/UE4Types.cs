@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.IO;
 using System.Globalization;
 
@@ -21,8 +19,8 @@ namespace ClientSettings
 			}
 			else if (Length < 0)
 			{
-				var Data = Reader.ReadBytes(-Length);
-				return Encoding.Unicode.GetString(Data, 0, Data.Length - 1);
+				var Data = Reader.ReadBytes(-Length * 2);
+				return Encoding.Unicode.GetString(Data, 0, Data.Length - 2);
 			}
 
 			return null;
@@ -32,16 +30,21 @@ namespace ClientSettings
 		{
 			if (value == null)
 			{
-				// 0 length FStrings are actually legal and appear by default
-				// in SelectedRegionId since Fortnite v5.10
 				Writer.Write(0);
+			}
+			else if (value.All(c => c < 128))
+			{
+				var Data = Encoding.ASCII.GetBytes(value);
+				Writer.Write(value.Length + 1);
+				Writer.Write(Data);
+				Writer.Write((byte)0); // Null terminator
 			}
 			else
 			{
-				var Data = Encoding.ASCII.GetBytes(value);
-				Writer.Write(Data.Length + 1);
+				var Data = Encoding.Unicode.GetBytes(value);
+				Writer.Write(-value.Length - 1);
 				Writer.Write(Data);
-				Writer.Write((byte)(0)); // Null terminator
+				Writer.Write((ushort)0); // Null terminator
 			}
 		}
 	}
@@ -53,9 +56,26 @@ namespace ClientSettings
 		}
 	}
 
-	public struct FGuid
+	public interface UProperty
 	{
-		public UInt32 A, B, C, D;
+		bool Editable { get; }
+		UProperty Clone();
+		void Deserialize(BinaryReader Reader);
+		void Serialize(BinaryWriter Writer);
+		string DisplayValue();
+		void Modify(string NewValue);
+	}
+
+	public struct FGuid : UProperty
+	{
+		public uint A, B, C, D;
+
+		public bool Editable => true;
+
+		public UProperty Clone()
+		{
+			return new FGuid { A = A, B = B, C = C, D = D };
+		}
 
 		public void Deserialize(BinaryReader Reader)
 		{
@@ -72,21 +92,137 @@ namespace ClientSettings
 			Writer.Write(C);
 			Writer.Write(D);
 		}
+
+		public string DisplayValue()
+		{
+			return $"{A.ToString("X8")}-{B.ToString("X8")}-{C.ToString("X8")}-{D.ToString("X8")}";
+		}
+
+		public void Modify(string NewValue)
+		{
+			var words = NewValue.Split('-');
+
+			if (words.Length != 4)
+				return;
+
+            try
+            {
+                var values = words.Select(word => Convert.ToUInt32(word, 16)).ToList();
+				A = values[0];
+				B = values[1];
+				C = values[2];
+				D = values[3];
+            }
+            catch
+            {
+            }
+		}
 	}
 
-	public interface UProperty
+	public class UIntProperty : UProperty
 	{
-		UProperty Clone();
-		void Deserialize(BinaryReader Reader);
-		void Serialize(BinaryWriter Writer);
-		string DisplayValue();
-		void Modify(string NewValue);
-		bool Editable { get; }
+		private int Value;
+
+		public bool Editable => true;
+
+		public UProperty Clone()
+		{
+			return new UIntProperty { Value = Value };
+		}
+
+		public void Deserialize(BinaryReader Reader)
+		{
+			Value = Reader.ReadInt32();
+		}
+
+		public void Serialize(BinaryWriter Writer)
+		{
+			Writer.Write(Value);
+		}
+
+		public string DisplayValue()
+		{
+			return Value.ToString(CultureInfo.InvariantCulture);
+		}
+
+		public void Modify(string NewValue)
+		{
+			if (int.TryParse(NewValue, NumberStyles.Number, CultureInfo.InvariantCulture, out var Result))
+				Value = Result;
+		}
+	}
+
+	public class UUInt32Property : UProperty
+	{
+		private uint Value;
+
+		public bool Editable => true;
+
+		public UProperty Clone()
+		{
+			return new UUInt32Property { Value = Value };
+		}
+
+		public void Deserialize(BinaryReader Reader)
+		{
+			Value = Reader.ReadUInt32();
+		}
+
+		public void Serialize(BinaryWriter Writer)
+		{
+			Writer.Write(Value);
+		}
+
+		public string DisplayValue()
+		{
+			return Value.ToString(CultureInfo.InvariantCulture);
+		}
+
+		public void Modify(string NewValue)
+		{
+			if (uint.TryParse(NewValue, NumberStyles.Number, CultureInfo.InvariantCulture, out var Result))
+				Value = Result;
+		}
+	}
+
+	public class UByteProperty : UProperty
+	{
+		private byte Value;
+
+		public bool Editable => true;
+
+		public UProperty Clone()
+		{
+			return new UByteProperty { Value = Value };
+		}
+
+		public void Deserialize(BinaryReader Reader)
+		{
+			Value = Reader.ReadByte();
+		}
+
+		public void Serialize(BinaryWriter Writer)
+		{
+			Writer.Write(Value);
+		}
+
+		public string DisplayValue()
+		{
+			return Value.ToString(CultureInfo.InvariantCulture);
+		}
+
+		public void Modify(string NewValue)
+		{
+			if (byte.TryParse(NewValue, NumberStyles.Number, CultureInfo.InvariantCulture, out var Result))
+				Value = Result;
+		}
 	}
 
 	public class UFloatProperty : UProperty
 	{
 		private float Value;
+
+		public bool Editable => true;
 
 		public UProperty Clone()
 		{
@@ -113,30 +249,46 @@ namespace ClientSettings
 			if (float.TryParse(NewValue, NumberStyles.Number, CultureInfo.InvariantCulture, out var Result))
 				Value = Result;
 		}
-
-		public bool Editable { get { return true; } }
 	}
 
 	public class UArrayProperty : UProperty
 	{
 		public int Length;
 		public FPropertyTag InnerTag { get; private set; } = new FPropertyTag();
+		public bool IsStruct;
+
+		public bool Editable => false;
+
+		public UArrayProperty(string InnerType)
+		{
+			if (InnerType == "StructProperty")
+				IsStruct = true;
+			else
+				InnerTag = new FPropertyTag(InnerType);
+		}
+
+		private UArrayProperty()
+		{
+		}
+
 
 		public UProperty Clone()
 		{
-			return new UArrayProperty { Length = Length, InnerTag = InnerTag.Clone() };
+			return new UArrayProperty { Length = Length, InnerTag = InnerTag.Clone(), IsStruct = IsStruct };
 		}
 
 		public void Deserialize(BinaryReader Reader)
 		{
 			Length = Reader.ReadInt32();
-			InnerTag.Deserialize(Reader);
+			if (IsStruct)
+                InnerTag.Deserialize(Reader);
 		}
 
 		public void Serialize(BinaryWriter Writer)
 		{
 			Writer.Write(Length);
-			InnerTag.Serialize(Writer);
+			if (IsStruct)
+                InnerTag.Serialize(Writer);
 		}
 
 		public string DisplayValue()
@@ -147,14 +299,48 @@ namespace ClientSettings
 		public void Modify(string NewValue)
 		{
 		}
+	}
 
-		public bool Editable { get { return false; } }
+	public class USetProperty : UProperty
+	{
+        public int Unknown;
+		public int Length;
+
+		public bool Editable => false;
+
+		public UProperty Clone()
+		{
+            return new USetProperty { Unknown = Unknown, Length = Length };
+		}
+
+		public void Deserialize(BinaryReader Reader)
+		{
+            Unknown = Reader.ReadInt32();
+			Length = Reader.ReadInt32();
+		}
+
+		public void Serialize(BinaryWriter Writer)
+		{
+            Writer.Write(Unknown);
+			Writer.Write(Length);
+		}
+
+		public string DisplayValue()
+		{
+			return "";
+		}
+
+		public void Modify(string NewValue)
+		{
+		}
 	}
 
 	public class UMapProperty : UProperty
 	{
 		public int NumKeysToRemove;
 		public int NumEntries;
+
+		public bool Editable => false;
 
 		public UProperty Clone()
 		{
@@ -181,13 +367,13 @@ namespace ClientSettings
 		public void Modify(string NewValue)
 		{
 		}
-
-		public bool Editable { get { return false; } }
 	}
 
 	public class UNameProperty : UProperty
 	{
 		private string Value;
+
+		public bool Editable => true;
 
 		public UProperty Clone()
 		{
@@ -213,8 +399,6 @@ namespace ClientSettings
 		{
 			Value = NewValue;
 		}
-
-		public bool Editable { get { return true; } }
 	}
 
 	public class UTextProperty : UProperty
@@ -225,9 +409,11 @@ namespace ClientSettings
             Base = 0
         }
 
-		private Int32 Flags;
+		private int Flags;
 		private ETextHistoryType HistoryType;
 		private string Namespace, Key, SourceString;
+
+		public bool Editable => false;
 
 		public UProperty Clone()
 		{
@@ -237,7 +423,7 @@ namespace ClientSettings
 		public void Deserialize(BinaryReader Reader)
 		{
 			Flags = Reader.ReadInt32();
-			HistoryType = (ETextHistoryType)(Reader.ReadByte());
+			HistoryType = (ETextHistoryType)Reader.ReadByte();
 
             if (HistoryType == ETextHistoryType.None)
                 return;
@@ -252,9 +438,11 @@ namespace ClientSettings
 		public void Serialize(BinaryWriter Writer)
 		{
 			Writer.Write(Flags);
-			Writer.Write((byte)(HistoryType));
+			Writer.Write((byte)HistoryType);
 
-			if (HistoryType != 0)
+            if (HistoryType == ETextHistoryType.None)
+                return;
+			else if (HistoryType != ETextHistoryType.Base)
 				throw new UESerializationException("Unsupported HistoryType");
 
 			Writer.WriteFString(Namespace);
@@ -270,13 +458,13 @@ namespace ClientSettings
 		public void Modify(string NewValue)
 		{
 		}
-
-		public bool Editable { get { return false; } }
 	}
 
 	public class FVector2D : UProperty
 	{
-		private float X, Y;
+		private double X, Y;
+
+		public bool Editable => true;
 
 		public UProperty Clone()
 		{
@@ -285,8 +473,8 @@ namespace ClientSettings
 
 		public void Deserialize(BinaryReader Reader)
 		{
-			X = Reader.ReadSingle();
-			Y = Reader.ReadSingle();
+			X = Reader.ReadDouble();
+			Y = Reader.ReadDouble();
 		}
 
 		public void Serialize(BinaryWriter Writer)
@@ -318,12 +506,13 @@ namespace ClientSettings
 			X = NewX;
 			Y = NewY;
 		}
-
-		public bool Editable { get { return true; } }
 	}
+
 	public class FDateTime : UProperty
 	{
         private DateTime Value;
+
+		public bool Editable => true;
 
 		public UProperty Clone()
 		{
@@ -350,8 +539,6 @@ namespace ClientSettings
 			if (DateTime.TryParse(NewValue, out var Result))
 				Value = Result;
 		}
-
-		public bool Editable { get { return true; } }
 	}
 
 	public class FPropertyTag
@@ -363,9 +550,9 @@ namespace ClientSettings
 		public string EnumName { get; private set; }
 		public string InnerType { get; private set; }
 		public string ValueType { get; private set; }
-		public Int32 Size { get; private set; }
+		public int Size { get; private set; }
 		public long SizeOffset { get; private set; }
-		private Int32 ArrayIndex;
+		private int ArrayIndex;
 		private FGuid StructGuid;
 		private byte HasPropertyGuid;
 		private FGuid PropertyGuid;

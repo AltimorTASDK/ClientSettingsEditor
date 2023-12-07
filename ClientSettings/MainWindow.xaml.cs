@@ -20,6 +20,8 @@ using System.Windows.Threading;
 using System.IO;
 using RestSharp;
 using Newtonsoft.Json.Linq;
+using Ionic.Zlib;
+using RestSharp.Extensions;
 
 namespace ClientSettings
 {
@@ -130,6 +132,11 @@ namespace ClientSettings
                         // Show input names without expanding.
                         return Children.Where(x => x.Name == "ActionName").FirstOrDefault()?.Value;
                     }
+                    else if (Tag.Type == "StructProperty" && Tag.StructName == "Key")
+                    {
+                        // Show input names without expanding.
+                        return Children.Where(x => x.Name == "KeyName").FirstOrDefault()?.Value;
+                    }
                     else if (Tag.Type == "StructProperty")
                     {
                         // Show HUD visibility names without expanding.
@@ -201,9 +208,19 @@ namespace ClientSettings
                 if (TypeName == "EnumProperty" && Tag.EnumName == null)
                     return "enum";
                 if (TypeName == "EnumProperty")
-                    return "enum " + Tag.EnumName;
+                    return $"enum {Tag.EnumName}";
                 if (TypeName == "ArrayProperty")
                     return (Children.Count > 0 ? Children[0].Type : TypeToCPP(Tag.InnerType)) + "["  + Children.Count + "]";
+                if (TypeName == "SetProperty")
+                    return "set<" + TypeToCPP(Tag.InnerType) + ">";
+                if (TypeName == "IntProperty")
+                    return "int";
+                if (TypeName == "UInt32Property")
+                    return "uint";
+                if (TypeName == "ByteProperty" && (Tag.EnumName == null || Tag.EnumName == "None"))
+                    return "byte";
+                if (TypeName == "ByteProperty")
+                    return $"enum {Tag.EnumName}";
                 if (TypeName == "FloatProperty")
                     return "float";
                 if (TypeName == "BoolProperty")
@@ -319,17 +336,21 @@ namespace ClientSettings
 
 		IDictionary<string, Func<UProperty>> PropertyConstructors = new Dictionary<string, Func<UProperty>>()
 		{
-			{ "FloatProperty", () => new UFloatProperty() },
-			{ "NameProperty", () => new UNameProperty() },
-			{ "StrProperty", () => new UNameProperty() },
-			{ "EnumProperty", () => new UNameProperty() },
-			{ "TextProperty", () => new UTextProperty() }
+			{ "IntProperty",    () => new UIntProperty()    },
+			{ "UInt32Property", () => new UUInt32Property() },
+			{ "ByteProperty",   () => new UByteProperty()   },
+			{ "FloatProperty",  () => new UFloatProperty()  },
+			{ "NameProperty",   () => new UNameProperty()   },
+			{ "StrProperty",    () => new UNameProperty()   },
+			{ "EnumProperty",   () => new UNameProperty()   },
+			{ "TextProperty",   () => new UTextProperty()   }
 		};
 
 		IDictionary<string, Func<UProperty>> HardcodedStructs = new Dictionary<string, Func<UProperty>>()
 		{
 			{ "Vector2D", () => new FVector2D() },
-			{ "DateTime", () => new FDateTime() }
+			{ "DateTime", () => new FDateTime() },
+			{ "Guid",	  () => new FGuid()     }
 		};
 
 		private PropertyInfo ReadProperty(BinaryReader Reader, FPropertyTag Tag = null)
@@ -355,11 +376,17 @@ namespace ClientSettings
 			}
 			else if (Info.Tag.Type == "StructProperty")
 			{
-				if (Info.Tag.StructName == null || !HardcodedStructs.ContainsKey(Info.Tag.StructName))
+				// Serializes a naked array
+				if (Info.Tag.StructName == "GameplayTagContainer")
 				{
-					// If it's not hardcoded it has tags for each field
-					for (var Child = ReadProperty(Reader); Child != null; Child = ReadProperty(Reader))
+					var ArrayProp = new UArrayProperty("NameProperty");
+					ArrayProp.Deserialize(Reader);
+					Info.Prop = ArrayProp;
+
+					for (var i = 0; i < ArrayProp.Length; i++)
 					{
+						var Child = ReadProperty(Reader, ArrayProp.InnerTag);
+						Child.ArrayIndex = i;
 						Child.Parent = Info;
 						Info.Children.Add(Child);
 					}
@@ -367,7 +394,19 @@ namespace ClientSettings
 					return Info;
 				}
 
-				Info.Prop = HardcodedStructs[Info.Tag.StructName]();
+                if (Info.Tag.StructName == null || !HardcodedStructs.ContainsKey(Info.Tag.StructName))
+                {
+                    // If it's not hardcoded it has tags for each field
+                    for (var Child = ReadProperty(Reader); Child != null; Child = ReadProperty(Reader))
+                    {
+                        Child.Parent = Info;
+                        Info.Children.Add(Child);
+                    }
+
+                    return Info;
+                }
+
+                Info.Prop = HardcodedStructs[Info.Tag.StructName]();
 			}
 			else if (Info.Tag.Type == "MapProperty")
 			{
@@ -399,20 +438,35 @@ namespace ClientSettings
 						Info.Children.Clear();
 						return Info;
 					}
-
 				}
 
 				return Info;
 			}
 			else if (Info.Tag.Type == "ArrayProperty")
 			{
-				var ArrayProp = new UArrayProperty();
+				var ArrayProp = new UArrayProperty(Info.Tag.InnerType);
 				ArrayProp.Deserialize(Reader);
 				Info.Prop = ArrayProp;
 
 				for (var i = 0; i < ArrayProp.Length; i++)
 				{
 					var Child = ReadProperty(Reader, ArrayProp.InnerTag);
+					Child.ArrayIndex = i;
+					Child.Parent = Info;
+					Info.Children.Add(Child);
+				}
+
+				return Info;
+			}
+			else if (Info.Tag.Type == "SetProperty")
+			{
+				var SetProp = new USetProperty();
+				SetProp.Deserialize(Reader);
+				Info.Prop = SetProp;
+
+				for (var i = 0; i < SetProp.Length; i++)
+				{
+                    var Child = ReadProperty(Reader, new FPropertyTag(Info.Tag.InnerType));
 					Child.ArrayIndex = i;
 					Child.Parent = Info;
 					Info.Children.Add(Child);
@@ -450,22 +504,21 @@ namespace ClientSettings
 			}
 
 			Info.RawData = Reader.ReadBytes(Info.Tag.Size);
+
 			using (var DataStream = new MemoryStream(Info.RawData))
-			{
-				using (var DataReader = new BinaryReader(DataStream))
-				{
-					try
-					{
-						Info.Prop.Deserialize(DataReader);
-					}
-					catch (Exception e)
-					{
-						// Treat it the same as an unsupported property type
-						Info.FailureReason = e.Message;
-						Info.Prop = null;
-					}
-				}
-			}
+            using (var DataReader = new BinaryReader(DataStream))
+            {
+                try
+                {
+                    Info.Prop.Deserialize(DataReader);
+                }
+                catch (Exception e)
+                {
+                    // Treat it the same as an unsupported property type
+                    Info.FailureReason = e.Message;
+                    Info.Prop = null;
+                }
+            }
 
 			return Info;
 		}
@@ -489,30 +542,10 @@ namespace ClientSettings
 
 			var PropStart = Writer.BaseStream.Position;
 
-			if (Info.Tag.Type == "StructProperty" && (Info.Tag.StructName == null || !HardcodedStructs.ContainsKey(Info.Tag.StructName)))
+			if (Info.Tag.Type == "ArrayProperty" ||
+				(Info.Tag.Type == "StructProperty" && Info.Tag.StructName == "GameplayTagContainer"))
 			{
-				// If it's not hardcoded it has tags for each field
-				foreach (var Child in Info.Children)
-					WriteProperty(Writer, Child);
-
-				// Terminator
-				Writer.WriteFString("None");
-			}
-			else if (Info.Tag.Type == "MapProperty")
-			{
-				var MapProp = (UMapProperty)(Info.Prop);
-				MapProp.NumEntries = Info.Children.Count / 2;
-
-				MapProp.Serialize(Writer);
-
-				var MapStart = Writer.BaseStream.Position;
-
-				foreach (var Child in Info.Children)
-					WriteProperty(Writer, Child, true);
-			}
-			else if (Info.Tag.Type == "ArrayProperty")
-			{
-				var ArrayProp = (UArrayProperty)(Info.Prop);
+				var ArrayProp = (UArrayProperty)Info.Prop;
 				ArrayProp.Length = Info.Children.Count;
 
 				Info.Prop.Serialize(Writer);
@@ -523,11 +556,34 @@ namespace ClientSettings
 				foreach (var Child in Info.Children)
 					WriteProperty(Writer, Child, true);
 
-				// Set InnerTag size
-				var ArrayEnd = Writer.BaseStream.Position;
-				Writer.BaseStream.Position = ArrayProp.InnerTag.SizeOffset;
-				Writer.Write((Int32)(ArrayEnd - ArrayStart));
-				Writer.BaseStream.Position = ArrayEnd;
+				if (ArrayProp.IsStruct)
+				{
+					// Set InnerTag size
+					var ArrayEnd = Writer.BaseStream.Position;
+					Writer.BaseStream.Position = ArrayProp.InnerTag.SizeOffset;
+					Writer.Write((int)(ArrayEnd - ArrayStart));
+					Writer.BaseStream.Position = ArrayEnd;
+				}
+			}
+			else if (Info.Tag.Type == "StructProperty" &&
+				(Info.Tag.StructName == null || !HardcodedStructs.ContainsKey(Info.Tag.StructName)))
+			{
+                // If it's not hardcoded it has tags for each field
+                foreach (var Child in Info.Children)
+                    WriteProperty(Writer, Child);
+
+                // Terminator
+                Writer.WriteFString("None");
+			}
+			else if (Info.Tag.Type == "MapProperty")
+			{
+				var MapProp = (UMapProperty)(Info.Prop);
+				MapProp.NumEntries = Info.Children.Count / 2;
+
+				MapProp.Serialize(Writer);
+
+				foreach (var Child in Info.Children)
+					WriteProperty(Writer, Child, true);
 			}
 			else if (Info.Prop == null)
 			{
@@ -537,21 +593,19 @@ namespace ClientSettings
 			{
 				// Read into a temporary stream in a case an exception occurs
 				using (var TempStream = new MemoryStream())
-				{
-					using (var TempWriter = new BinaryWriter(TempStream))
-					{
-						try
-						{
-							Info.Prop.Serialize(TempWriter);
-							Writer.Write(TempStream.ToArray());
-						}
-						catch (UESerializationException)
-						{
-							// Write the original bytes instead
-							Writer.Write(Info.RawData);
-						}
-					}
-				}
+                using (var TempWriter = new BinaryWriter(TempStream))
+                {
+                    try
+                    {
+                        Info.Prop.Serialize(TempWriter);
+                        Writer.Write(TempStream.ToArray());
+                    }
+                    catch (UESerializationException)
+                    {
+                        // Write the original bytes instead
+                        Writer.Write(Info.RawData);
+                    }
+                }
 			}
 
 			// Correctly set the size in the tag since it could change
@@ -560,7 +614,7 @@ namespace ClientSettings
 
 			var PropEnd = Writer.BaseStream.Position;
 			Writer.BaseStream.Position = Info.Tag.SizeOffset;
-			Writer.Write((Int32)(PropEnd - PropStart));
+			Writer.Write((int)(PropEnd - PropStart));
 			Writer.BaseStream.Position = PropEnd;
 		}
 
@@ -595,36 +649,75 @@ namespace ClientSettings
 		{
 			public byte[] Unknown1;
 			public string Version;
-			public Int32 Unknown2;
+			public int Unknown2;
+			public byte[] Unknown3;
 		}
 
 		private SettingsHeader Header;
+		private byte[] Footer;
 		private string OpenFilePath = null;
+
+        private bool ReadFromStream(Stream Settings)
+        {
+            using (var Reader = new BinaryReader(Settings))
+            {
+                try
+                {
+                    Header.Unknown1 = Reader.ReadBytes(0x16);
+                    Header.Version = Reader.ReadFString();
+                    Header.Unknown2 = Reader.ReadInt32();
+                    Header.Unknown3 = Reader.ReadBytes(0x7AE);
+
+                    Application.Current.Dispatcher.BeginInvoke((Action)(PropertyList.Clear));
+
+#if DEBUG
+					var DebugPropertyList = new List<PropertyInfo>();
+#endif
+
+					for (var PropInfo = ReadProperty(Reader); PropInfo != null; PropInfo = ReadProperty(Reader))
+					{
+#if DEBUG
+						DebugPropertyList.Add(PropInfo);
+#endif
+						Application.Current.Dispatcher.BeginInvoke((Action<PropertyInfo>)PropertyList.Add, PropInfo);
+					}
+
+					// Enhanced input stuff
+					Footer = Settings.ReadAsBytes();
+
+                    return true;
+                }
+                catch (Exception e)
+                {
+                    Application.Current.Dispatcher.BeginInvoke((Action)PropertyList.Clear);
+                    Application.Current.Dispatcher.Invoke(() => MessageBox.Show("Failed to deserialize file. Exception: " + e.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error));
+                    return false;
+                }
+            }
+        }
 
 		private bool OpenFromStream(Stream Settings)
 		{
-			using (var Reader = new BinaryReader(Settings))
-			{
-				/*try
-				{*/
-					Header.Unknown1 = Reader.ReadBytes(0x12);
-					Header.Version = Reader.ReadFString();
-					Header.Unknown2 = Reader.ReadInt32();
+            var Buffer = new byte[4];
+            Settings.Read(Buffer, 0, 4);
 
-					Application.Current.Dispatcher.BeginInvoke((Action)(PropertyList.Clear));
+            // Check for compressed "ECFD" header magic
+            if (Buffer.SequenceEqual(new byte[] { 0x45, 0x43, 0x46, 0x44 }))
+            {
+                // Skip header
+                Settings.Position = 0x10;
 
-					for (var PropInfo = ReadProperty(Reader); PropInfo != null; PropInfo = ReadProperty(Reader))
-						Application.Current.Dispatcher.BeginInvoke((Action<PropertyInfo>)(PropertyList.Add), PropInfo);
+                var Data = new byte[Settings.Length - 0x10];
+                Settings.Read(Data, 0, Data.Length);
 
-					return true;
-				/*}
-				catch (Exception e)
-				{
-					Application.Current.Dispatcher.BeginInvoke((Action)(PropertyList.Clear));
-					Application.Current.Dispatcher.Invoke(() => MessageBox.Show("Failed to deserialize file. Exception: " + e.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error));
-					return false;
-				}*/
-			}
+                using (var Decompressed = new MemoryStream(ZlibStream.UncompressBuffer(Data.ToArray())))
+                    return ReadFromStream(Decompressed);
+            }
+            else
+            {
+                Settings.Position = 0;
+                return ReadFromStream(Settings);
+            }
 		}
 
 		private bool SaveToStream(Stream Settings)
@@ -636,12 +729,14 @@ namespace ClientSettings
 					Writer.Write(Header.Unknown1);
 					Writer.WriteFString(Header.Version);
 					Writer.Write(Header.Unknown2);
+					Writer.Write(Header.Unknown3);
 
 					foreach (var Info in PropertyList)
 						WriteProperty(Writer, Info);
 
 					Writer.WriteFString("None");
-					Writer.Write(0);
+
+					Writer.Write(Footer);
 
 					return true;
 				}
